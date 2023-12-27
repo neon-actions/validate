@@ -25,11 +25,17 @@ runs:
       run: |
         expected_arch=$(node -e 'console.log("${{ inputs['platform'] }}".split("-")[1])')
         entry=${{ inputs['entry'] }}
+        echo "entry=$entry"
         entry_file=$(basename $entry)
+        echo "entry_file=$entry_file"
         entry_dir=$(dirname $entry)
+        echo "entry_dir=$entry_dir"
         os_config="${{ github.action_path }}/data/${{ runner.os }}.json"
+        echo "os_config=$os_config"
         cmd=$(cat $os_config | jq -r .cmd)
+        echo "cmd=$cmd"
         parse=$(cat $os_config | jq -r .parse)
+        echo "parse=$parse"
         for tarball in ${{ inputs['tarballs'] }}; do
           filename=$(basename $tarball)
           echo "***** Validating: $filename *****"
@@ -38,8 +44,10 @@ runs:
           cp $tarball ${{ runner.temp }}/$without_ext
           pushd ${{ runner.temp }}/$without_ext
           tar xvzf ./$filename
+          cd package
           cd $entry_dir
           arch=$($cmd $entry_file | $parse)
+          echo "arch=$arch"
           actual_arch=$(cat $os_config | jq -r ".arch | .[\"$arch\"]")
           popd
           echo "expected_arch=$expected_arch"
