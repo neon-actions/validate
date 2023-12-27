@@ -46,7 +46,7 @@ runs:
           tar xvzf ./$filename
           cd package
           cd $entry_dir
-          arch=$($cmd $entry_file | $parse)
+          arch=$(eval "$cmd $entry_file | $parse")
           echo "arch=$arch"
           actual_arch=$(cat $os_config | jq -r ".arch | .[\"$arch\"]")
           popd
