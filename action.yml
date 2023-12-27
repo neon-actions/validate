@@ -1,0 +1,52 @@
+name: 'Validate Neon Build'
+description: 'Validate the contents of a prebuilt Neon package.'
+inputs:
+  working-directory:
+    description: 'Working directory containing Neon source package.'
+    required: true
+  tarballs:
+    description: 'Path or glob of prebuilt package tarball(s) to validate.'
+    required: true
+  platform:
+    description: 'Expected platform.'
+    required: true
+  entry:
+    description: 'Path of file entry within each prebuilt package tarball to validate.'
+    required: false
+    default: 'index.node'
+branding:
+  icon: 'check'
+  color: 'green'
+runs:
+  using: "composite"
+  steps:
+    - name: Validate
+      shell: bash
+      run: |
+        expected_arch=$(node -e 'console.log("${{ inputs['platform'] }}".split("-")[1])')
+        entry=${{ inputs['entry'] }}
+        entry_file=$(basename $entry)
+        entry_dir=$(dirname $entry)
+        os_config="${{ github.action_path }}/data/${{ runner.os }}.json"
+        cmd=$(cat $os_config | jq -r .cmd)
+        parse=$(cat $os_config | jq -r .parse)
+        for tarball in ${{ inputs['tarballs'] }}; do
+          filename=$(basename $tarball)
+          echo "***** Validating: $filename *****"
+          without_ext=${filename%.*}
+          mkdir -p ${{ runner.temp }}/$without_ext
+          cp $tarball ${{ runner.temp }}/$without_ext
+          pushd ${{ runner.temp }}/$without_ext
+          tar xvzf ./$filename
+          cd $entry_dir
+          arch=$($cmd $entry_file | $parse)
+          actual_arch=$(cat $os_config | jq -r ".arch | .[\"$arch\"]")
+          popd
+          echo "expected_arch=$expected_arch"
+          echo "actual_arch=$actual_arch"
+          if [ $expected_arch != $actual_arch ]; then
+            echo "$filename packed for ${{ inputs['platform'] }}, found $actual_arch"
+            exit 1
+          fi
+        done
+      working-directory: ${{ inputs['working-directory'] }}
